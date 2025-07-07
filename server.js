@@ -1,245 +1,182 @@
-const mp = new MercadoPago('TEST-9a4a1f5f-3f6b-4e2f-9b7c-8e8f8d8b8c8d', { locale: 'pt-BR' });
-let selectedNumbers = [];
-let userId = Math.random().toString(36).substring(2, 15);
+require('dotenv').config();
+const express = require('express');
+const { MercadoPagoConfig, Payment } = require('mercadopago');
+const app = express();
 
-async function loadNumbers() {
-    document.getElementById('loading-message').style.display = 'block';
-    document.getElementById('numbers-grid').style.display = 'none';
-    try {
-        const response = await fetch('https://larrisasubzero.onrender.com/available_numbers');
-        if (!response.ok) throw new Error('Erro ao carregar números');
-        const numbers = await response.json();
-        const grid = document.getElementById('numbers-grid');
-        grid.innerHTML = '';
-        numbers.forEach(num => {
-            const div = document.createElement('div');
-            div.className = `number ${num.status === 'disponível' ? 'available' : num.status === 'reservado' ? 'reserved' : 'sold'}`;
-            div.textContent = num.number;
-            if (num.status === 'disponível') {
-                div.addEventListener('click', () => toggleNumber(num.number, div));
-            }
-            grid.appendChild(div);
-        });
-        document.getElementById('loading-message').style.display = 'none';
-        document.getElementById('numbers-grid').style.display = 'grid';
-    } catch (error) {
-        console.error('Erro ao carregar números:', error);
-        document.getElementById('number-error').style.display = 'block';
-        document.getElementById('error-details').textContent = 'Erro ao carregar números. Tente novamente ou entre em contato via Instagram.';
-        document.getElementById('loading-message').style.display = 'none';
+app.use(express.json());
+app.use(express.static('.')); // Serve arquivos da raiz
+
+const client = new MercadoPagoConfig({
+    accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || 'TEST-1234567890'
+});
+
+const numbers = Array.from({ length: 200 }, (_, i) => ({
+    number: String(i + 1).padStart(3, '0'),
+    status: 'disponível'
+}));
+
+const reservations = new Map();
+
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok' });
+});
+
+app.get('/public_key', (req, res) => {
+    res.json({ publicKey: process.env.MERCADO_PAGO_PUBLIC_KEY || 'TEST-9a4a1f5f-3f6b-4e2f-9b7c-8e8f8d8b8c8d' });
+});
+
+app.post('/verify_password', (req, res) => {
+    const { password } = req.body;
+    const isValid = password === (process.env.PASSWORD || 'SorteioSubZero2025');
+    res.json({ success: isValid });
+});
+
+app.get('/available_numbers', (req, res) => {
+    res.json(numbers);
+});
+
+app.post('/reserve_numbers', (req, res) => {
+    const { userId, numbers: selectedNumbers } = req.body;
+    if (!userId || !selectedNumbers || !Array.isArray(selectedNumbers)) {
+        return res.status(400).json({ error: 'Dados inválidos' });
     }
-}
+    const reservationTime = 5 * 60 * 1000; // 5 minutos
 
-function toggleNumber(number, element) {
-    if (selectedNumbers.includes(number)) {
-        selectedNumbers = selectedNumbers.filter(n => n !== number);
-        element.classList.remove('selected');
-        element.classList.add('available');
-    } else {
-        selectedNumbers.push(number);
-        element.classList.remove('available');
-        element.classList.add('selected');
-    }
-    updatePaymentSection();
-}
-
-function updatePaymentSection() {
-    const paymentSection = document.getElementById('payment-form-section');
-    paymentSection.style.display = selectedNumbers.length > 0 ? 'block' : 'none';
-    document.getElementById('selected-numbers').textContent = selectedNumbers.join(', ') || 'Nenhum';
-    document.getElementById('total-price').textContent = (selectedNumbers.length * 5).toFixed(2);
-}
-
-async function verifyPassword() {
-    const passwordInput = document.getElementById('password-input').value;
-    const passwordError = document.getElementById('password-error');
-    const passwordOverlay = document.getElementById('password-overlay');
-    try {
-        const response = await fetch('https://larrisasubzero.onrender.com/verify_password', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password: passwordInput })
-        });
-        const result = await response.json();
-        if (result.success) {
-            passwordOverlay.style.display = 'none';
-            window.location.href = '/sorteio.html';
-        } else {
-            passwordError.style.display = 'block';
-            document.getElementById('password-input').value = '';
+    const reserved = selectedNumbers.every(num => {
+        const numberObj = numbers.find(n => n.number === num);
+        if (numberObj && numberObj.status === 'disponível') {
+            numberObj.status = 'reservado';
+            reservations.set(num, { userId, timestamp: Date.now() });
+            return true;
         }
-    } catch (error) {
-        console.error('Erro ao verificar senha:', error);
-        passwordError.textContent = 'Erro ao verificar a senha. Tente novamente.';
-        passwordError.style.display = 'block';
-        document.getElementById('password-input').value = '';
-    }
-}
-
-async function reserveNumbers() {
-    if (selectedNumbers.length === 0) return;
-    try {
-        const response = await fetch('https://larrisasubzero.onrender.com/reserve_numbers', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, numbers: selectedNumbers })
-        });
-        if (!response.ok) throw new Error('Erro ao reservar números');
-    } catch (error) {
-        console.error('Erro ao reservar números:', error);
-        document.getElementById('error-message').style.display = 'block';
-    }
-}
-
-async function renderCardForm() {
-    document.getElementById('card-payment-form').innerHTML = '';
-    const cardForm = mp.cardForm({
-        amount: (selectedNumbers.length * 5).toString(),
-        autoMount: true,
-        form: {
-            id: 'card-payment-form',
-            cardholderName: { id: 'cardholderName', placeholder: 'Nome no cartão' },
-            cardNumber: { id: 'cardNumber', placeholder: 'Número do cartão' },
-            expirationDate: { id: 'cardExpiration', placeholder: 'MM/AA' },
-            securityCode: { id: 'securityCode', placeholder: 'CVV' },
-            installments: { id: 'installments', placeholder: 'Parcelas' },
-            identificationType: { id: 'docType', placeholder: 'Tipo de documento' },
-            identificationNumber: { id: 'docNumber', placeholder: 'CPF do titular' }
-        },
-        callbacks: {
-            onFormMounted: error => {
-                if (error) console.warn('Erro ao montar formulário:', error);
-            },
-            onSubmit: async event => {
-                event.preventDefault();
-                try {
-                    const { paymentMethodId, issuerId, token } = await mp.cardForm.createCardToken();
-                    await processCardPayment(token, paymentMethodId, issuerId);
-                } catch (error) {
-                    console.error('Erro ao processar cartão:', error);
-                    document.getElementById('error-message').style.display = 'block';
-                    loadNumbers();
-                }
-            },
-            onFetching: resource => {
-                console.log('Buscando recurso:', resource);
-            }
-        }
+        return false;
     });
-}
 
-async function processCardPayment(token, paymentMethodId, issuerId) {
-    await reserveNumbers();
-    const transaction_amount = selectedNumbers.length * 5;
-    const buyerName = document.getElementById('buyer-name').value;
-    const buyerPhone = document.getElementById('buyer-phone').value;
-    try {
-        const paymentData = {
-            transaction_amount,
-            token,
-            payment_method_id: paymentMethodId,
-            issuer_id: issuerId,
-            installments: parseInt(document.getElementById('installments').value) || 1
-        };
-        const response = await fetch('https://larrisasubzero.onrender.com/process_payment', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, numbers: selectedNumbers, buyerName, buyerPhone, paymentData })
-        });
-        if (!response.ok) throw new Error('Erro ao processar pagamento');
-        const result = await response.json();
-        if (result.status === 'approved') {
-            document.getElementById('success-message').style.display = 'block';
-            selectedNumbers = [];
-            updatePaymentSection();
-            loadNumbers();
-        } else if (result.status === 'pending') {
-            document.getElementById('pending-message').style.display = 'block';
-        } else {
-            document.getElementById('error-message').style.display = 'block';
-            loadNumbers();
-        }
-    } catch (error) {
-        console.error('Erro ao processar pagamento:', error);
-        document.getElementById('error-message').style.display = 'block';
-        loadNumbers();
+    if (!reserved) {
+        return res.status(400).json({ error: 'Alguns números não estão disponíveis' });
     }
-}
 
-document.getElementById('password-submit').addEventListener('click', verifyPassword);
-document.getElementById('password-input').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') verifyPassword();
-});
-
-document.getElementById('header-logo').addEventListener('click', (event) => {
-    event.preventDefault();
-    document.getElementById('password-overlay').style.display = 'flex';
-    document.getElementById('password-input').focus();
-});
-
-document.getElementById('pay-card').addEventListener('click', () => {
-    document.getElementById('card-payment-form').style.display = 'block';
-    document.getElementById('pix-payment-form').style.display = 'none';
-    renderCardForm();
-});
-
-document.getElementById('pay-pix').addEventListener('click', async () => {
-    document.getElementById('card-payment-form').style.display = 'none';
-    document.getElementById('pix-payment-form').style.display = 'block';
-    await reserveNumbers();
-    const transaction_amount = selectedNumbers.length * 5;
-    const buyerName = document.getElementById('buyer-name').value;
-    const buyerPhone = document.getElementById('buyer-phone').value;
-    try {
-        const response = await fetch('https://larrisasubzero.onrender.com/process_pix_payment', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, numbers: selectedNumbers, buyerName, buyerPhone, transaction_amount })
-        });
-        if (!response.ok) throw new Error('Erro ao gerar Pix');
-        const result = await response.json();
-        if (result.qr_code) {
-            document.getElementById('pix-qr-code').src = `data:image/png;base64,${result.qr_code_base64}`;
-            document.getElementById('pix-code').textContent = result.qr_code;
-            checkPixPaymentStatus(result.payment_id);
-        } else {
-            document.getElementById('error-message').style.display = 'block';
-            loadNumbers();
-        }
-    } catch (error) {
-        console.error('Erro ao processar Pix:', error);
-        document.getElementById('error-message').style.display = 'block';
-        loadNumbers();
-    }
-});
-
-async function checkPixPaymentStatus(paymentId) {
-    const interval = setInterval(async () => {
-        try {
-            const response = await fetch(`https://larrisasubzero.onrender.com/payment_status/${paymentId}`);
-            if (!response.ok) throw new Error('Erro ao verificar status do pagamento');
-            const result = await response.json();
-            if (result.status === 'approved') {
-                clearInterval(interval);
-                document.getElementById('success-message').style.display = 'block';
-                selectedNumbers = [];
-                updatePaymentSection();
-                loadNumbers();
-            } else if (result.status === 'rejected') {
-                clearInterval(interval);
-                document.getElementById('error-message').style.display = 'block';
-                loadNumbers();
-            } else if (result.status === 'pending') {
-                document.getElementById('pending-message').style.display = 'block';
+    setTimeout(() => {
+        selectedNumbers.forEach(num => {
+            const reservation = reservations.get(num);
+            if (reservation && Date.now() - reservation.timestamp > reservationTime) {
+                const numberObj = numbers.find(n => n.number === num);
+                if (numberObj && numberObj.status === 'reservado') {
+                    numberObj.status = 'disponível';
+                    reservations.delete(num);
+                }
             }
-        } catch (error) {
-            console.error('Erro ao verificar status do Pix:', error);
-            clearInterval(interval);
-            document.getElementById('error-message').style.display = 'block';
-            loadNumbers();
-        }
-    }, 5000);
-}
+        });
+    }, reservationTime);
 
-// Carrega os números automaticamente ao abrir a página
-loadNumbers();
+    res.json({ success: true });
+});
+
+app.post('/process_payment', async (req, res) => {
+    const { userId, numbers, buyerName, buyerPhone, paymentData } = req.body;
+    if (!userId || !numbers || !buyerName || !buyerPhone || !paymentData) {
+        return res.status(400).json({ error: 'Dados incompletos' });
+    }
+
+    try {
+        const payment = new Payment(client);
+        const paymentResponse = await payment.create({
+            body: {
+                transaction_amount: paymentData.transaction_amount,
+                token: paymentData.token,
+                description: `Compra de números: ${numbers.join(', ')}`,
+                payment_method_id: paymentData.payment_method_id,
+                issuer_id: paymentData.issuer_id,
+                installments: paymentData.installments || 1,
+                payer: {
+                    email: `${userId}@subzerobeer.com`,
+                    name: buyerName,
+                    identification: { type: 'CPF', number: buyerPhone }
+                }
+            }
+        });
+
+        numbers.forEach(num => {
+            const numberObj = numbers.find(n => n.number === num);
+            if (numberObj && numberObj.status === 'reservado') {
+                numberObj.status = paymentResponse.status === 'approved' ? 'vendido' : 'disponível';
+                reservations.delete(num);
+            }
+        });
+
+        res.json({ status: paymentResponse.status });
+    } catch (error) {
+        console.error(`[${new Date().toISOString()}] Erro ao processar pagamento:`, error.message);
+        numbers.forEach(num => {
+            const numberObj = numbers.find(n => n.number === num);
+            if (numberObj && numberObj.status === 'reservado') {
+                numberObj.status = 'disponível';
+                reservations.delete(num);
+            }
+        });
+        res.status(500).json({ status: 'rejected', error: error.message });
+    }
+});
+
+app.post('/process_pix_payment', async (req, res) => {
+    const { userId, numbers, buyerName, buyerPhone, transaction_amount } = req.body;
+    if (!userId || !numbers || !buyerName || !buyerPhone || !transaction_amount) {
+        return res.status(400).json({ error: 'Dados incompletos' });
+    }
+
+    try {
+        const payment = new Payment(client);
+        const paymentResponse = await payment.create({
+            body: {
+                transaction_amount,
+                description: `Compra de números: ${numbers.join(', ')}`,
+                payment_method_id: 'pix',
+                payer: {
+                    email: `${userId}@subzerobeer.com`,
+                    first_name: buyerName.split(' ')[0],
+                    last_name: buyerName.split(' ').slice(1).join(' '),
+                    identification: { type: 'CPF', number: buyerPhone }
+                }
+            }
+        });
+
+        numbers.forEach(num => {
+            const numberObj = numbers.find(n => n.number === num);
+            if (numberObj && numberObj.status === 'reservado') {
+                numberObj.status = 'reservado';
+            }
+        });
+
+        res.json({
+            payment_id: paymentResponse.id,
+            qr_code: paymentResponse.point_of_interaction.transaction_data.qr_code,
+            qr_code_base64: paymentResponse.point_of_interaction.transaction_data.qr_code_base64
+        });
+    } catch (error) {
+        console.error(`[${new Date().toISOString()}] Erro ao processar pagamento Pix:`, error.message);
+        numbers.forEach(num => {
+            const numberObj = numbers.find(n => n.number === num);
+            if (numberObj && numberObj.status === 'reservado') {
+                numberObj.status = 'disponível';
+                reservations.delete(num);
+            }
+        });
+        res.status(500).json({ status: 'rejected', error: error.message });
+    }
+});
+
+app.get('/payment_status/:paymentId', async (req, res) => {
+    const { paymentId } = req.params;
+    try {
+        const payment = new Payment(client);
+        const paymentResponse = await payment.get({ id: paymentId });
+        res.json({ status: paymentResponse.status });
+    } catch (error) {
+        console.error(`[${new Date().toISOString()}] Erro ao verificar status do pagamento:`, error.message);
+        res.status(500).json({ status: 'rejected', error: error.message });
+    }
+});
+
+app.listen(process.env.PORT || 3000, () => {
+    console.log(`[${new Date().toISOString()}] Servidor rodando na porta ${process.env.PORT || 3000}`);
+});
