@@ -1,4 +1,4 @@
-const mp = new MercadoPago(process.env.MERCADO_PAGO_PUBLIC_KEY || 'SUA_CHAVE_PUBLICA_AQUI', { locale: 'pt-BR' });
+const mp = new MercadoPago('TEST-9a4a1f5f-3f6b-4e2f-9b7c-8e8f8d8b8c8d', { locale: 'pt-BR' });
 let selectedNumbers = [];
 let userId = Math.random().toString(36).substring(2, 15);
 
@@ -63,7 +63,7 @@ async function verifyPassword() {
         const result = await response.json();
         if (result.success) {
             passwordOverlay.style.display = 'none';
-            window.location.href = '/subzerobeer/sorteio.html';
+            window.location.href = '/sorteio.html';
         } else {
             passwordError.style.display = 'block';
             document.getElementById('password-input').value = '';
