@@ -2,90 +2,356 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sorteio Sub-zero Beer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+    <title>Sub-zero Beer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Bungee&display=swap" rel="stylesheet">
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <style>
-        #card-form input, #card-form select {
-            margin: 10px 0;
-            padding: 8px;
-            width: 100%;
-            max-width: 300px;
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: white;
+            color: #000000;
+            font-size: 16px;
         }
-        #card-form button, #pay-card, #pay-pix {
-            background-color: #007bff;
+        h1, h2, h3 {
+            text-transform: uppercase;
+        }
+        header {
+            background-color: #000000 !important;
             color: white;
-            padding: 10px;
-            border: none;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 2;
+        }
+        .header-logo {
+            max-width: 100%;
+            height: auto;
+            max-height: 120px;
+            display: block;
+            margin: 0 auto;
+            animation: pulseTitle 2s ease-in-out infinite;
             cursor: pointer;
-            margin: 5px;
         }
-        #card-form button:hover, #pay-card:hover, #pay-pix:hover {
-            background-color: #0056b3;
+        @keyframes pulseTitle {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
-        #number-grid {
+        .sorteio-text {
+            font-family: 'Roboto', sans-serif;
+            font-size: clamp(16px, 4vw, 18px);
+            font-weight: 700;
+            margin: 15px 0;
+            text-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
+            text-transform: uppercase;
+        }
+        nav {
+            margin-top: 15px;
+        }
+        nav a {
+            color: white;
+            margin: 0 15px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: clamp(16px, 4vw, 18px);
+            transition: color 0.3s;
+        }
+        nav a:hover {
+            color: #ff4040;
+        }
+        .numbers-grid {
             display: grid;
-            grid-template-columns: repeat(10, 1fr);
-            gap: 5px;
+            grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
+            gap: 8px;
+            max-width: 90%;
+            margin: 10px auto;
         }
         .number {
-            padding: 10px;
-            text-align: center;
+            padding: 12px;
             border: 1px solid #ccc;
+            border-radius: 5px;
+            text-align: center;
+            font-size: clamp(14px, 3.5vw, 16px);
+            color: #000000;
         }
-        .available { background-color: #28a745; }
-        .reserved { background-color: #ffc107; }
-        .sold { background-color: #dc3545; }
-        #pix-details img { max-width: 200px; }
+        .number.available {
+            background-color: #00ff00 !important;
+            color: #000000 !important;
+            cursor: pointer;
+        }
+        .number.selected {
+            background-color: #ff0000 !important;
+            color: #ffffff !important;
+            border: 2px solid #ffffff !important;
+        }
+        .number.reserved, .number.sold {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        .payment-form {
+            max-width: 90%;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            display: none;
+        }
+        .payment-form h2 {
+            font-size: clamp(20px, 5vw, 22px);
+        }
+        .payment-form p {
+            font-size: clamp(16px, 4vw, 18px);
+        }
+        .payment-form input, .payment-form select {
+            padding: 12px;
+            margin: 10px 0;
+            width: calc(100% - 24px);
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: clamp(16px, 4vw, 18px);
+            background-color: #ffffff;
+            color: #000000;
+        }
+        .payment-form .pay-button {
+            background-color: #00ff00;
+            color: #000000;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 700;
+            font-size: clamp(16px, 4vw, 18px);
+            transition: background-color 0.3s;
+            margin: 10px 0;
+        }
+        .payment-form .pay-button:hover {
+            background-color: #00cc00;
+        }
+        .success-message, .error-message, .pending-message, .number-error {
+            max-width: 90%;
+            margin: 20px auto;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+            font-size: clamp(16px, 4vw, 18px);
+        }
+        .success-message {
+            background-color: #e0e0e0;
+            border-left: 4px solid #000000;
+        }
+        .error-message, .number-error {
+            background-color: #ff4040;
+            border-left: 4px solid #cc0000;
+        }
+        .pending-message {
+            background-color: #e0e0e0;
+            border-left: 4px solid #ff4040;
+        }
+        .loading-message {
+            text-align: center;
+            margin: 20px;
+            display: none;
+            color: #ff0000;
+            font-weight: 700;
+            font-size: clamp(16px, 4vw, 18px);
+        }
+        footer {
+            background-color: #000000 !important;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            box-shadow: 0 -2px 4px rgba(0,0,0,0.2);
+        }
+        .instagram-button, .share-button {
+            background-color: #ff0000;
+            color: #ffffff;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-block;
+            font-weight: 700;
+            font-size: clamp(16px, 4vw, 18px);
+            margin: 8px;
+            transition: background-color 0.3s;
+        }
+        .instagram-button:hover, .share-button:hover {
+            background-color: #cc0000;
+        }
+        .password-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .password-box {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .password-box input {
+            padding: 10px;
+            margin: 10px 0;
+            width: 80%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .password-box button {
+            background-color: #00ff00;
+            color: #000000;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 16px;
+        }
+        .password-box button:hover {
+            background-color: #00cc00;
+        }
+        .password-error {
+            color: #ff0000;
+            font-size: 14px;
+            margin-top: 10px;
+            display: none;
+        }
+        #card-payment-form, #pix-payment-form {
+            display: none;
+        }
+        #card-payment-form input, #card-payment-form select {
+            padding: 12px;
+            margin: 10px 0;
+            width: calc(100% - 24px);
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: clamp(16px, 4vw, 18px);
+            background-color: #ffffff;
+            color: #000000;
+        }
+        #card-payment-form select {
+            width: calc(100% - 24px);
+            max-width: 200px;
+        }
+        #pix-qr-code {
+            max-width: 200px;
+            margin: 20px auto;
+            display: block;
+        }
+        #pix-code {
+            font-family: monospace;
+            margin: 10px auto;
+            max-width: 300px;
+            word-wrap: break-word;
+            font-size: clamp(14px, 3.5vw, 16px);
+        }
+        @media (max-width: 600px) {
+            body { font-size: 14px; }
+            header { padding: 15px; }
+            .header-logo { max-height: 100px; }
+            .sorteio-text { font-size: clamp(14px, 3.5vw, 16px); margin: 10px 0; }
+            nav a { font-size: clamp(14px, 3.5vw, 16px); margin: 0 10px; }
+            .numbers-grid { grid-template-columns: repeat(auto-fit, minmax(45px, 1fr)); gap: 6px; margin-top: 10px; }
+            .number { padding: 10px; font-size: clamp(12px, 3vw, 14px); }
+            .payment-form { padding: 15px; }
+            .payment-form h2 { font-size: clamp(18px, 4.5vw, 20px); }
+            .payment-form p { font-size: clamp(14px, 3.5vw, 16px); }
+            .payment-form input, .payment-form select { padding: 10px; font-size: clamp(14px, 3.5vw, 16px); }
+            .payment-form .pay-button { padding: 10px 20px; font-size: clamp(14px, 3.5vw, 16px); }
+            .success-message, .error-message, .pending-message, .number-error { padding: 15px; font-size: clamp(14px, 3.5vw, 16px); }
+            .loading-message { font-size: clamp(14px, 3.5vw, 16px); }
+            .instagram-button, .share-button { padding: 10px 20px; font-size: clamp(14px, 3.5vw, 16px); }
+            footer { padding: 15px; }
+            .password-box { width: 90%; }
+            .password-box input { font-size: 14px; }
+            .password-box button { font-size: 14px; }
+        }
     </style>
 </head>
 <body>
-    <div>
-        <h1>PARTICIPE DO NOSSO SORTEIO E CONCORRA A UMA CAIXA DE CERVEJA LITRÃO A SUA ESCOLHA E UMA PORÇÃO DE FRANGO A PASSARINHO VALOR DE 5 REAIS CADA NÚMERO!</h1>
+    <header>
+        <img src="/subzerobeer/images/subzero.png" alt="Sub-Zero Beer Logo" class="header-logo" id="header-logo">
+        <p class="sorteio-text">PARTICIPE DO NOSSO SORTEIO E CONCORRA A UMA CAIXA DE CERVEJA LITRÃO A SUA ESCOLHA E UMA PORÇÃO DE FRANGO A PASSARINHO VALOR DE 5 REAIS CADA NÚMERO!</p>
         <nav>
-            <a href="index (5).html">INÍCIO</a>
-            <a href="ganhadores (1).html">GANHADORES</a>
+            <a href="/subzerobeer/index.html">INÍCIO</a>
+            <a href="/subzerobeer/ganhadores.html">GANHADORES</a>
         </nav>
+    </header>
+
+    <div class="password-overlay" id="password-overlay">
+        <div class="password-box">
+            <h3>Digite a Senha</h3>
+            <input type="password" id="password-input" placeholder="Senha" required>
+            <button id="password-submit">Entrar</button>
+            <p class="password-error" id="password-error">Senha incorreta. Tente novamente.</p>
+        </div>
     </div>
 
-    <div id="password-overlay">
-        <h2>Digite a Senha</h2>
-        <input type="password" id="password-input">
-        <button id="password-submit">Entrar</button>
-        <p id="password-error" style="display: none;">Senha incorreta. Tente novamente.</p>
-    </div>
+    <section class="success-message" id="success-message" aria-live="polite">
+        <h3>PAGAMENTO APROVADO COM SUCESSO!</h3>
+        <p>Seus números estão confirmados. Boa sorte!</p>
+    </section>
 
-    <div id="number-error" style="display: none;">ERRO AO CARREGAR NÚMEROS. Tente novamente mais tarde ou entre em contato via Instagram.</div>
-    <div id="loading-message">Aguarde um momento, os números estão sendo carregados...</div>
-    <div id="number-grid"></div>
+    <section class="error-message" id="error-message" aria-live="polite">
+        <h3>O PAGAMENTO NÃO FOI CONCLUÍDO.</h3>
+        <p>Seus números foram liberados. Escolha outra vez para tentar novamente.</p>
+    </section>
 
-    <div id="payment-success" style="display: none;">PAGAMENTO APROVADO COM SUCESSO! Seus números estão confirmados. Boa sorte!</div>
-    <div id="payment-failed" style="display: none;">O PAGAMENTO NÃO FOI CONCLUÍDO. Seus números foram liberados. Escolha outra vez para tentar novamente.</div>
-    <div id="payment-pending" style="display: none;">SEU PAGAMENTO ESTÁ PENDENTE. Aguarde a confirmação ou tente novamente se os números expirarem.</div>
+    <section class="pending-message" id="pending-message" aria-live="polite">
+        <h3>SEU PAGAMENTO ESTÁ PENDENTE.</h3>
+        <p>Aguarde a confirmação ou tente novamente se os números expirarem.</p>
+    </section>
 
-    <div id="payment-section" style="display: none;">
+    <section class="number-error" id="number-error" aria-live="polite">
+        <h3>ERRO AO CARREGAR NÚMEROS</h3>
+        <p id="error-details">Não foi possível carregar os números disponíveis. Tente novamente mais tarde ou entre em contato via Instagram.</p>
+    </section>
+
+    <div class="loading-message" id="loading-message">Aguarde um momento, os números estão sendo carregados...</div>
+
+    <div class="numbers-grid" id="numbers-grid"></div>
+
+    <section class="payment-form" id="payment-form-section" style="display: none;">
         <h2>FINALIZE SUA COMPRA</h2>
         <p>Preencha os dados abaixo e escolha o método de pagamento. Cada número custa R$ 5,00.</p>
-        <p id="selected-numbers">Números selecionados: Nenhum</p>
-        <p id="total-amount">Total: R$ 0.00</p>
-        <input type="text" id="buyer-name" placeholder="Nome completo">
-        <input type="text" id="buyer-phone" placeholder="CPF">
-        <button id="pay-card">Pagar com Cartão</button>
-        <button id="pay-pix">Pagar com Pix</button>
-        <div id="card-form" style="display: none;"></div>
-        <div id="pix-details" style="display: none;">
-            <img id="pix-qr" src="" alt="QR Code Pix">
-            <p id="pix-code"></p>
-        </div>
-        <p>Atenção: Você tem 5 minutos para realizar o pagamento, ou os números selecionados serão liberados.</p>
-    </div>
+        <form id="payment-form">
+            <p>Números selecionados: <span id="selected-numbers">Nenhum</span></p>
+            <p>Total: R$ <span id="total-price">0.00</span></p>
+            <input type="text" id="buyer-name" placeholder="Seu Nome" required>
+            <input type="tel" id="buyer-phone" placeholder="Seu Telefone (ex.: 11912345678)" pattern="[0-9]{10,11}" required>
+            <button type="button" id="pay-card" class="pay-button">Pagar com Cartão</button>
+            <button type="button" id="pay-pix" class="pay-button">Pagar com Pix</button>
+            <div id="card-payment-form" style="display: none;"></div>
+            <div id="pix-payment-form" style="display: none;">
+                <img id="pix-qr-code" src="" alt="QR Code Pix">
+                <p id="pix-code"></p>
+            </div>
+            <p>Atenção: Você tem 5 minutos para realizar o pagamento, ou os números selecionados serão liberados.</p>
+        </form>
+    </section>
 
     <footer>
-        <p>Contato: <a href="https://instagram.com/SUBZEROBEERCBA">@SUBZEROBEERCBA</a></p>
-        <a href="https://wa.me/5581999999999">COMPARTILHAR NO WHATSAPP</a>
+        <p>Contato: <a href="https://instagram.com/Subzerobeercba" class="instagram-button">@SUBZEROBEERCBA</a></p>
+        <p><a href="https://wa.me/?text=Participe%20do%20sorteio%20do%20Sub-zero%20Beer!%20Compre%20n%C3%BAmeros%20por%20R$%205%20e%20concorra%20a%201%20caixa%20de%20litr%C3%A3o%20e%201%20por%C3%A7%C3%A3o%20de%20frango%20a%20passarinho:%20https://larrisasubzero.github.io/subzerobeer/index.html" class="share-button">COMPARTILHAR NO WHATSAPP</a></p>
         <p>© 2025 SUB-ZERO BEER</p>
     </footer>
 
-    <script src="payment.js"></script>
+    <script src="/subzerobeer/payment.js"></script>
 </body>
 </html>
