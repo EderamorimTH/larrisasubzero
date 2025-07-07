@@ -63,7 +63,7 @@ async function verifyPassword() {
         const result = await response.json();
         if (result.success) {
             passwordOverlay.style.display = 'none';
-            loadNumbers();
+            window.location.href = '/subzerobeer/sorteio.html';
         } else {
             passwordError.style.display = 'block';
             document.getElementById('password-input').value = '';
@@ -87,7 +87,7 @@ async function reserveNumbers() {
         if (!response.ok) throw new Error('Erro ao reservar números');
     } catch (error) {
         console.error('Erro ao reservar números:', error);
-        alert('Erro ao reservar números. Tente novamente.');
+        document.getElementById('error-message').style.display = 'block';
     }
 }
 
@@ -241,6 +241,5 @@ async function checkPixPaymentStatus(paymentId) {
     }, 5000);
 }
 
-// Inicializa o overlay de senha
-document.getElementById('password-overlay').style.display = 'flex';
-document.getElementById('password-input').focus();
+// Carrega os números automaticamente ao abrir a página
+loadNumbers();
