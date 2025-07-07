@@ -6,6 +6,14 @@ const app = express();
 app.use(express.json());
 app.use(express.static('.')); // Serve arquivos da raiz
 
+// Adicionar cabeçalhos CORS
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    next();
+});
+
 const client = new MercadoPagoConfig({
     accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || 'SEU_ACCESS_TOKEN_AQUI'
 });
@@ -32,6 +40,7 @@ app.post('/verify_password', (req, res) => {
 });
 
 app.get('/available_numbers', (req, res) => {
+    console.log('Rota /available_numbers chamada'); // Log para depuração
     res.json(numbers);
 });
 
