@@ -4,11 +4,12 @@ let userId = Math.random().toString(36).substring(2, 15);
 
 async function loadNumbers() {
     document.getElementById('loading-message').style.display = 'block';
+    document.getElementById('numbers-grid').style.display = 'none';
     try {
-        const response = await fetch('/available_numbers');
+        const response = await fetch('https://larrisasubzero.onrender.com/available_numbers');
         if (!response.ok) throw new Error('Erro ao carregar números');
         const numbers = await response.json();
-        const grid = document.getElementById('number-grid');
+        const grid = document.getElementById('numbers-grid');
         grid.innerHTML = '';
         numbers.forEach(num => {
             const div = document.createElement('div');
@@ -20,9 +21,11 @@ async function loadNumbers() {
             grid.appendChild(div);
         });
         document.getElementById('loading-message').style.display = 'none';
+        document.getElementById('numbers-grid').style.display = 'grid';
     } catch (error) {
         console.error('Erro ao carregar números:', error);
         document.getElementById('number-error').style.display = 'block';
+        document.getElementById('error-details').textContent = 'Erro ao carregar números. Tente novamente ou entre em contato via Instagram.';
         document.getElementById('loading-message').style.display = 'none';
     }
 }
@@ -30,54 +33,53 @@ async function loadNumbers() {
 function toggleNumber(number, element) {
     if (selectedNumbers.includes(number)) {
         selectedNumbers = selectedNumbers.filter(n => n !== number);
-        element.classList.remove('reserved');
+        element.classList.remove('selected');
         element.classList.add('available');
     } else {
         selectedNumbers.push(number);
         element.classList.remove('available');
-        element.classList.add('reserved');
+        element.classList.add('selected');
     }
     updatePaymentSection();
 }
 
 function updatePaymentSection() {
-    const paymentSection = document.getElementById('payment-section');
+    const paymentSection = document.getElementById('payment-form-section');
     paymentSection.style.display = selectedNumbers.length > 0 ? 'block' : 'none';
-    document.getElementById('selected-numbers').textContent = `Números selecionados: ${selectedNumbers.join(', ') || 'Nenhum'}`;
-    document.getElementById('total-amount').textContent = `Total: R$ ${(selectedNumbers.length * 5).toFixed(2)}`;
-    if (selectedNumbers.length > 0) {
-        renderCardForm();
-    } else {
-        document.getElementById('card-form').style.display = 'none';
-        document.getElementById('pix-details').style.display = 'none';
-    }
+    document.getElementById('selected-numbers').textContent = selectedNumbers.join(', ') || 'Nenhum';
+    document.getElementById('total-price').textContent = (selectedNumbers.length * 5).toFixed(2);
 }
 
 async function verifyPassword() {
-    const password = document.getElementById('password-input').value;
+    const passwordInput = document.getElementById('password-input').value;
+    const passwordError = document.getElementById('password-error');
+    const passwordOverlay = document.getElementById('password-overlay');
     try {
-        const response = await fetch('/verify_password', {
+        const response = await fetch('https://larrisasubzero.onrender.com/verify_password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password })
+            body: JSON.stringify({ password: passwordInput })
         });
         const result = await response.json();
         if (result.success) {
-            document.getElementById('password-overlay').style.display = 'none';
+            passwordOverlay.style.display = 'none';
             loadNumbers();
         } else {
-            alert('Senha incorreta!');
+            passwordError.style.display = 'block';
+            document.getElementById('password-input').value = '';
         }
     } catch (error) {
         console.error('Erro ao verificar senha:', error);
-        alert('Erro ao verificar senha. Tente novamente.');
+        passwordError.textContent = 'Erro ao verificar a senha. Tente novamente.';
+        passwordError.style.display = 'block';
+        document.getElementById('password-input').value = '';
     }
 }
 
 async function reserveNumbers() {
     if (selectedNumbers.length === 0) return;
     try {
-        const response = await fetch('/reserve_numbers', {
+        const response = await fetch('https://larrisasubzero.onrender.com/reserve_numbers', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId, numbers: selectedNumbers })
@@ -90,17 +92,19 @@ async function reserveNumbers() {
 }
 
 async function renderCardForm() {
-    document.getElementById('card-form').innerHTML = ''; // Limpa o formulário anterior
+    document.getElementById('card-payment-form').innerHTML = '';
     const cardForm = mp.cardForm({
         amount: (selectedNumbers.length * 5).toString(),
         autoMount: true,
         form: {
-            id: 'card-form',
-            cardholderName: { id: 'card-holder', placeholder: 'Nome no cartão' },
-            cardNumber: { id: 'card-number', placeholder: 'Número do cartão' },
-            expirationDate: { id: 'card-expiry', placeholder: 'MM/AA' },
-            securityCode: { id: 'card-cvc', placeholder: 'CVC' },
-            installments: { id: 'installments', placeholder: 'Parcelas' }
+            id: 'card-payment-form',
+            cardholderName: { id: 'cardholderName', placeholder: 'Nome no cartão' },
+            cardNumber: { id: 'cardNumber', placeholder: 'Número do cartão' },
+            expirationDate: { id: 'cardExpiration', placeholder: 'MM/AA' },
+            securityCode: { id: 'securityCode', placeholder: 'CVV' },
+            installments: { id: 'installments', placeholder: 'Parcelas' },
+            identificationType: { id: 'docType', placeholder: 'Tipo de documento' },
+            identificationNumber: { id: 'docNumber', placeholder: 'CPF do titular' }
         },
         callbacks: {
             onFormMounted: error => {
@@ -113,7 +117,7 @@ async function renderCardForm() {
                     await processCardPayment(token, paymentMethodId, issuerId);
                 } catch (error) {
                     console.error('Erro ao processar cartão:', error);
-                    alert('Erro ao processar pagamento com cartão!');
+                    document.getElementById('error-message').style.display = 'block';
                     loadNumbers();
                 }
             },
@@ -137,7 +141,7 @@ async function processCardPayment(token, paymentMethodId, issuerId) {
             issuer_id: issuerId,
             installments: parseInt(document.getElementById('installments').value) || 1
         };
-        const response = await fetch('/process_payment', {
+        const response = await fetch('https://larrisasubzero.onrender.com/process_payment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId, numbers: selectedNumbers, buyerName, buyerPhone, paymentData })
@@ -145,17 +149,19 @@ async function processCardPayment(token, paymentMethodId, issuerId) {
         if (!response.ok) throw new Error('Erro ao processar pagamento');
         const result = await response.json();
         if (result.status === 'approved') {
-            alert('Pagamento aprovado!');
+            document.getElementById('success-message').style.display = 'block';
             selectedNumbers = [];
             updatePaymentSection();
             loadNumbers();
+        } else if (result.status === 'pending') {
+            document.getElementById('pending-message').style.display = 'block';
         } else {
-            alert('Pagamento recusado!');
+            document.getElementById('error-message').style.display = 'block';
             loadNumbers();
         }
     } catch (error) {
         console.error('Erro ao processar pagamento:', error);
-        alert('Erro ao processar pagamento!');
+        document.getElementById('error-message').style.display = 'block';
         loadNumbers();
     }
 }
@@ -165,21 +171,27 @@ document.getElementById('password-input').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') verifyPassword();
 });
 
+document.getElementById('header-logo').addEventListener('click', (event) => {
+    event.preventDefault();
+    document.getElementById('password-overlay').style.display = 'flex';
+    document.getElementById('password-input').focus();
+});
+
 document.getElementById('pay-card').addEventListener('click', () => {
-    document.getElementById('card-form').style.display = 'block';
-    document.getElementById('pix-details').style.display = 'none';
+    document.getElementById('card-payment-form').style.display = 'block';
+    document.getElementById('pix-payment-form').style.display = 'none';
     renderCardForm();
 });
 
 document.getElementById('pay-pix').addEventListener('click', async () => {
-    document.getElementById('card-form').style.display = 'none';
-    document.getElementById('pix-details').style.display = 'block';
+    document.getElementById('card-payment-form').style.display = 'none';
+    document.getElementById('pix-payment-form').style.display = 'block';
     await reserveNumbers();
     const transaction_amount = selectedNumbers.length * 5;
     const buyerName = document.getElementById('buyer-name').value;
     const buyerPhone = document.getElementById('buyer-phone').value;
     try {
-        const response = await fetch('/process_pix_payment', {
+        const response = await fetch('https://larrisasubzero.onrender.com/process_pix_payment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId, numbers: selectedNumbers, buyerName, buyerPhone, transaction_amount })
@@ -187,16 +199,16 @@ document.getElementById('pay-pix').addEventListener('click', async () => {
         if (!response.ok) throw new Error('Erro ao gerar Pix');
         const result = await response.json();
         if (result.qr_code) {
-            document.getElementById('pix-qr').src = `data:image/png;base64,${result.qr_code_base64}`;
+            document.getElementById('pix-qr-code').src = `data:image/png;base64,${result.qr_code_base64}`;
             document.getElementById('pix-code').textContent = result.qr_code;
             checkPixPaymentStatus(result.payment_id);
         } else {
-            alert('Erro ao gerar Pix!');
+            document.getElementById('error-message').style.display = 'block';
             loadNumbers();
         }
     } catch (error) {
         console.error('Erro ao processar Pix:', error);
-        alert('Erro ao gerar Pix!');
+        document.getElementById('error-message').style.display = 'block';
         loadNumbers();
     }
 });
@@ -204,25 +216,31 @@ document.getElementById('pay-pix').addEventListener('click', async () => {
 async function checkPixPaymentStatus(paymentId) {
     const interval = setInterval(async () => {
         try {
-            const response = await fetch(`/payment_status/${paymentId}`);
+            const response = await fetch(`https://larrisasubzero.onrender.com/payment_status/${paymentId}`);
             if (!response.ok) throw new Error('Erro ao verificar status do pagamento');
             const result = await response.json();
             if (result.status === 'approved') {
                 clearInterval(interval);
-                alert('Pagamento Pix aprovado!');
+                document.getElementById('success-message').style.display = 'block';
                 selectedNumbers = [];
                 updatePaymentSection();
                 loadNumbers();
             } else if (result.status === 'rejected') {
                 clearInterval(interval);
-                alert('Pagamento Pix recusado!');
+                document.getElementById('error-message').style.display = 'block';
                 loadNumbers();
+            } else if (result.status === 'pending') {
+                document.getElementById('pending-message').style.display = 'block';
             }
         } catch (error) {
             console.error('Erro ao verificar status do Pix:', error);
             clearInterval(interval);
-            alert('Erro ao verificar status do pagamento!');
+            document.getElementById('error-message').style.display = 'block';
             loadNumbers();
         }
     }, 5000);
 }
+
+// Inicializa o overlay de senha
+document.getElementById('password-overlay').style.display = 'flex';
+document.getElementById('password-input').focus();
