@@ -149,7 +149,7 @@ app.post('/process_pix_payment', async (req, res) => {
 
         res.json({
             payment_id: paymentResponse.id,
-            qr_code:pen
+            qr_code: paymentResponse.point_of_interaction.transaction_data.qr_code,
             qr_code_base64: paymentResponse.point_of_interaction.transaction_data.qr_code_base64
         });
     } catch (error) {
