@@ -226,6 +226,12 @@
         .password-box button:hover {
             background-color: #00cc00;
         }
+        .payment-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
         .password-error {
             color: #ff0000;
             font-size: 14px;
@@ -335,8 +341,10 @@
             <p>Total: R$ <span id="total-price">0.00</span></p>
             <input type="text" id="buyer-name" placeholder="Seu Nome" required>
             <input type="tel" id="buyer-phone" placeholder="Seu Telefone (ex.: 11912345678)" pattern="[0-9]{10,11}" required>
-            <button type="button" id="pay-card" class="pay-button">Pagar com Cartão</button>
-            <button type="button" id="pay-pix" class="pay-button">Pagar com Pix</button>
+            <div class="payment-buttons">
+                <button type="button" id="pay-card" class="pay-button">Pagar com Cartão</button>
+                <button type="button" id="pay-pix" class="pay-button">Pagar com Pix</button>
+            </div>
             <div id="card-payment-form" style="display: none;"></div>
             <div id="pix-payment-form" style="display: none;">
                 <img id="pix-qr-code" src="" alt="QR Code Pix">
@@ -348,7 +356,7 @@
 
     <footer>
         <p>Contato: <a href="https://instagram.com/Subzerobeercba" class="instagram-button">@SUBZEROBEERCBA</a></p>
-        <p><a href="https://wa.me/?text=Participe%20do%20sorteio%20do%20Sub-zero%20Beer!%20Compre%20n%C3%BAmeros%20por%20R$%205%20e%20concorra%20a%201%20caixa%20de%20litr%C3%A3o%20e%201%20por%C3%A7%C3%A3o%20de%20frango%20a%20passarinho:%20https://larrisasubzero.github.io/index.html" class="share-button">COMPARTILHAR NO WHATSAPP</a></p>
+        <p><a href="https://wa.me/?text=Participe%20do%20sorteio%20do%20Sub-zero%20Beer!%20Compre%20n%C3%BAmeros%20por%20R$%205%20e%20concorra%20a%201%20caixa%20de%20litr%C3%A3o%20e%201%20por%C3%A7%C3%A3o%20de%20frango%20a%20passarinho:%20https://ederamorimth.github.io/larrisasubzero/index.html" class="share-button">COMPARTILHAR NO WHATSAPP</a></p>
         <p>© 2025 SUB-ZERO BEER</p>
     </footer>
 
