@@ -7,7 +7,7 @@ app.use(express.json());
 app.use(express.static('.')); // Serve arquivos da raiz
 
 const client = new MercadoPagoConfig({
-    accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || 'TEST-1234567890'
+    accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || 'SEU_ACCESS_TOKEN_AQUI'
 });
 
 const numbers = Array.from({ length: 200 }, (_, i) => ({
@@ -22,7 +22,7 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/public_key', (req, res) => {
-    res.json({ publicKey: process.env.MERCADO_PAGO_PUBLIC_KEY || 'TEST-9a4a1f5f-3f6b-4e2f-9b7c-8e8f8d8b8c8d' });
+    res.json({ publicKey: process.env.MERCADO_PAGO_PUBLIC_KEY || 'SUA_CHAVE_PUBLICA_AQUI' });
 });
 
 app.post('/verify_password', (req, res) => {
@@ -149,7 +149,7 @@ app.post('/process_pix_payment', async (req, res) => {
 
         res.json({
             payment_id: paymentResponse.id,
-            qr_code: paymentResponse.point_of_interaction.transaction_data.qr_code,
+            qr_code:pen
             qr_code_base64: paymentResponse.point_of_interaction.transaction_data.qr_code_base64
         });
     } catch (error) {
