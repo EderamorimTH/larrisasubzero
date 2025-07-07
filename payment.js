@@ -4,17 +4,28 @@ let userId = Math.random().toString(36).substring(2, 15);
 
 async function loadNumbers() {
     console.log('Iniciando loadNumbers...');
-    document.getElementById('loading-message').style.display = 'block';
-    document.getElementById('numbers-grid').style.display = 'none';
+    const loadingMessage = document.getElementById('loading-message');
+    const numbersGrid = document.getElementById('numbers-grid');
+    if (!loadingMessage || !numbersGrid) {
+        console.error('Elementos DOM não encontrados:', { loadingMessage, numbersGrid });
+        return;
+    }
+    loadingMessage.style.display = 'block';
+    numbersGrid.style.display = 'none';
     try {
         console.log('Fazendo fetch para https://larrisasubzero.onrender.com/available_numbers');
-        const response = await fetch('https://larrisasubzero.onrender.com/available_numbers');
-        console.log('Resposta recebida:', response);
-        if (!response.ok) throw new Error(`Erro ao carregar números: ${response.status} ${response.statusText}`);
+        const response = await fetch('https://larrisasubzero.onrender.com/available_numbers', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        console.log('Resposta recebida:', { status: response.status, ok: response.ok });
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Erro ao carregar números: ${response.status} ${response.statusText} - ${errorText}`);
+        }
         const numbers = await response.json();
         console.log('Números recebidos:', numbers.slice(0, 5));
-        const grid = document.getElementById('numbers-grid');
-        grid.innerHTML = '';
+        numbersGrid.innerHTML = '';
         numbers.forEach(num => {
             const div = document.createElement('div');
             div.className = `number ${num.status === 'disponível' ? 'available' : num.status === 'reservado' ? 'reserved' : 'sold'}`;
@@ -22,15 +33,19 @@ async function loadNumbers() {
             if (num.status === 'disponível') {
                 div.addEventListener('click', () => toggleNumber(num.number, div));
             }
-            grid.appendChild(div);
+            numbersGrid.appendChild(div);
         });
-        document.getElementById('loading-message').style.display = 'none';
-        document.getElementById('numbers-grid').style.display = 'grid';
+        loadingMessage.style.display = 'none';
+        numbersGrid.style.display = 'grid';
     } catch (error) {
         console.error('Erro ao carregar números:', error);
-        document.getElementById('number-error').style.display = 'block';
-        document.getElementById('error-details').textContent = `Erro ao carregar números: ${error.message}. Tente novamente ou entre em contato via Instagram.`;
-        document.getElementById('loading-message').style.display = 'none';
+        const numberError = document.getElementById('number-error');
+        const errorDetails = document.getElementById('error-details');
+        if (numberError && errorDetails) {
+            numberError.style.display = 'block';
+            errorDetails.textContent = `Erro ao carregar números: ${error.message}. Tente novamente ou entre em contato via Instagram.`;
+        }
+        loadingMessage.style.display = 'none';
     }
 }
 
