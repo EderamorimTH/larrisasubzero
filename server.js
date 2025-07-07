@@ -25,6 +25,8 @@ const numbers = Array.from({ length: 200 }, (_, i) => ({
 
 const reservations = new Map();
 
+console.log('Servidor iniciado. Estado inicial dos números:', numbers.slice(0, 5));
+
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok' });
 });
@@ -36,17 +38,26 @@ app.get('/public_key', (req, res) => {
 app.post('/verify_password', (req, res) => {
     const { password } = req.body;
     const isValid = password === (process.env.PASSWORD || 'SorteioSubZero2025');
+    console.log('Verificação de senha:', { password, isValid });
     res.json({ success: isValid });
 });
 
 app.get('/available_numbers', (req, res) => {
-    console.log('Rota /available_numbers chamada'); // Log para depuração
+    console.log('Rota /available_numbers chamada. Total de números:', numbers.length);
     res.json(numbers);
+});
+
+app.post('/reset_numbers', (req, res) => {
+    numbers.forEach(num => (num.status = 'disponível'));
+    reservations.clear();
+    console.log('Números resetados. Estado atual:', numbers.slice(0, 5));
+    res.json({ success: true });
 });
 
 app.post('/reserve_numbers', (req, res) => {
     const { userId, numbers: selectedNumbers } = req.body;
     if (!userId || !selectedNumbers || !Array.isArray(selectedNumbers)) {
+        console.log('Erro ao reservar números: Dados inválidos', { userId, selectedNumbers });
         return res.status(400).json({ error: 'Dados inválidos' });
     }
     const reservationTime = 5 * 60 * 1000; // 5 minutos
@@ -62,6 +73,7 @@ app.post('/reserve_numbers', (req, res) => {
     });
 
     if (!reserved) {
+        console.log('Erro ao reservar números: Alguns números não estão disponíveis', { selectedNumbers });
         return res.status(400).json({ error: 'Alguns números não estão disponíveis' });
     }
 
@@ -76,6 +88,7 @@ app.post('/reserve_numbers', (req, res) => {
                 }
             }
         });
+        console.log('Números liberados após timeout:', selectedNumbers);
     }, reservationTime);
 
     res.json({ success: true });
@@ -84,6 +97,7 @@ app.post('/reserve_numbers', (req, res) => {
 app.post('/process_payment', async (req, res) => {
     const { userId, numbers, buyerName, buyerPhone, paymentData } = req.body;
     if (!userId || !numbers || !buyerName || !buyerPhone || !paymentData) {
+        console.log('Erro ao processar pagamento: Dados incompletos', { userId, numbers, buyerName, buyerPhone });
         return res.status(400).json({ error: 'Dados incompletos' });
     }
 
@@ -113,6 +127,7 @@ app.post('/process_payment', async (req, res) => {
             }
         });
 
+        console.log('Pagamento processado:', { status: paymentResponse.status, numbers });
         res.json({ status: paymentResponse.status });
     } catch (error) {
         console.error(`[${new Date().toISOString()}] Erro ao processar pagamento:`, error.message);
@@ -130,6 +145,7 @@ app.post('/process_payment', async (req, res) => {
 app.post('/process_pix_payment', async (req, res) => {
     const { userId, numbers, buyerName, buyerPhone, transaction_amount } = req.body;
     if (!userId || !numbers || !buyerName || !buyerPhone || !transaction_amount) {
+        console.log('Erro ao processar Pix: Dados incompletos', { userId, numbers, buyerName, buyerPhone });
         return res.status(400).json({ error: 'Dados incompletos' });
     }
 
@@ -156,6 +172,7 @@ app.post('/process_pix_payment', async (req, res) => {
             }
         });
 
+        console.log('Pix gerado:', { payment_id: paymentResponse.id });
         res.json({
             payment_id: paymentResponse.id,
             qr_code: paymentResponse.point_of_interaction.transaction_data.qr_code,
@@ -179,6 +196,7 @@ app.get('/payment_status/:paymentId', async (req, res) => {
     try {
         const payment = new Payment(client);
         const paymentResponse = await payment.get({ id: paymentId });
+        console.log('Status do pagamento verificado:', { paymentId, status: paymentResponse.status });
         res.json({ status: paymentResponse.status });
     } catch (error) {
         console.error(`[${new Date().toISOString()}] Erro ao verificar status do pagamento:`, error.message);
