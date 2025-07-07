@@ -1,4 +1,4 @@
-const mp = new MercadoPago('TEST-INSIRA_SUA_CHAVE_PUBLICA_AQUI', { locale: 'pt-BR' });
+const mp = new MercadoPago('TEST-5e5bdff5-dc61-49c3-a5f7-c14eb59b3ea2', { locale: 'pt-BR' });
 let selectedNumbers = [];
 let userId = Math.random().toString(36).substring(2, 15);
 
