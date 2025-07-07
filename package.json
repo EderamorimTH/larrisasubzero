@@ -1,0 +1,17 @@
+{
+  "name": "larrisasubzero",
+  "version": "1.0.0",
+  "description": "Sistema de sorteio Sub-zero Beer (Teste)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mercadopago": "^2.0.8",
+    "dotenv": "^16.0.0"
+  },
+  "engines": {
+    "node": "22.16.0"
+  }
+}
