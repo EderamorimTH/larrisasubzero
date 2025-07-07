@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const { MercadoPagoConfig, Payment } = require('mercadopago');
 const app = express();
@@ -26,7 +27,7 @@ app.get('/public_key', (req, res) => {
 
 app.post('/verify_password', (req, res) => {
     const { password } = req.body;
-    const isValid = password === (process.env.PASSWORD || 'SUA_SENHA_AQUI');
+    const isValid = password === (process.env.PASSWORD || 'SorteioSubZero2025');
     res.json({ success: isValid });
 });
 
@@ -36,72 +37,24 @@ app.get('/available_numbers', (req, res) => {
 
 app.post('/reserve_numbers', (req, res) => {
     const { userId, numbers: selectedNumbers } = req.body;
+    if (!userId || !selectedNumbers || !Array.isArray(selectedNumbers)) {
+        return res.status(400).json({ error: 'Dados inválidos' });
+    }
     const reservationTime = 5 * 60 * 1000; // 5 minutos
 
-    selectedNumbers.forEach(num => {
+    const reserved = selectedNumbers.every(num => {
         const numberObj = numbers.find(n => n.number === num);
         if (numberObj && numberObj.status === 'disponível') {
             numberObj.status = 'reservado';
             reservations.set(num, { userId, timestamp: Date.now() });
+            return true;
         }
+        return false;
     });
 
-    setTimeout(() => {
-        selectedNumbers.forEach(num => {
-            const reservation = reservations.get(num);
-            if (reservation && Date.now() - reservation.timestamp > reservationTime) {
-                const numberObj = numbers部分
-
-System: **reserve_numbers` para refletir a estrutura existente.
-
-```javascript
-const express = require('express');
-const { MercadoPagoConfig, Payment } = require('mercadopago');
-const app = express();
-
-app.use(express.json());
-app.use(express.static('public'));
-
-const client = new MercadoPagoConfig({
-    accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || 'SEU_ACCESS_TOKEN_AQUI'
-});
-
-const numbers = Array.from({ length: 200 }, (_, i) => ({
-    number: String(i + 1).padStart(3, '0'),
-    status: 'disponível'
-}));
-
-const reservations = new Map();
-
-app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok' });
-});
-
-app.get('/public_key', (req, res) => {
-    res.json({ publicKey: process.env.MERCADO_PAGO_PUBLIC_KEY || 'SUA_CHAVE_PUBLICA_AQUI' });
-});
-
-app.post('/verify_password', (req, res) => {
-    const { password } = req.body;
-    const isValid = password === (process.env.PASSWORD || 'SUA_SENHA_AQUI');
-    res.json({ success: isValid });
-});
-
-app.get('/available_numbers', (req, res) => {
-    res.json(numbers);
-});
-
-app.post('/reserve_numbers', (req, res) => {
-    const { userId, numbers: selectedNumbers } = req.body;
-    const reservationTime = 5 * 60 * 1000; // 5 minutos
-
-    selectedNumbers.forEach(num => {
-        const numberObj = numbers.find(n => n.number === num);
-        if (numberObj && numberObj.status === 'disponível') {
-            numberObj.status = 'reservado';
-            reservations.set(num, { userId, timestamp: Date.now() });
-        }
-    });
+    if (!reserved) {
+        return res.status(400).json({ error: 'Alguns números não estão disponíveis' });
+    }
 
     setTimeout(() => {
         selectedNumbers.forEach(num => {
@@ -121,6 +74,9 @@ app.post('/reserve_numbers', (req, res) => {
 
 app.post('/process_payment', async (req, res) => {
     const { userId, numbers, buyerName, buyerPhone, paymentData } = req.body;
+    if (!userId || !numbers || !buyerName || !buyerPhone || !paymentData) {
+        return res.status(400).json({ error: 'Dados incompletos' });
+    }
 
     try {
         const payment = new Payment(client);
@@ -158,12 +114,15 @@ app.post('/process_payment', async (req, res) => {
                 reservations.delete(num);
             }
         });
-        res.status(500).json({ status: 'rejected' });
+        res.status(500).json({ status: 'rejected', error: error.message });
     }
 });
 
 app.post('/process_pix_payment', async (req, res) => {
     const { userId, numbers, buyerName, buyerPhone, transaction_amount } = req.body;
+    if (!userId || !numbers || !buyerName || !buyerPhone || !transaction_amount) {
+        return res.status(400).json({ error: 'Dados incompletos' });
+    }
 
     try {
         const payment = new Payment(client);
@@ -184,7 +143,7 @@ app.post('/process_pix_payment', async (req, res) => {
         numbers.forEach(num => {
             const numberObj = numbers.find(n => n.number === num);
             if (numberObj && numberObj.status === 'reservado') {
-                numberObj.status = 'reservado'; // Mantém reservado até confirmação
+                numberObj.status = 'reservado';
             }
         });
 
@@ -202,7 +161,7 @@ app.post('/process_pix_payment', async (req, res) => {
                 reservations.delete(num);
             }
         });
-        res.status(500).json({ status: 'rejected' });
+        res.status(500).json({ status: 'rejected', error: error.message });
     }
 });
 
@@ -214,7 +173,7 @@ app.get('/payment_status/:paymentId', async (req, res) => {
         res.json({ status: paymentResponse.status });
     } catch (error) {
         console.error(`[${new Date().toISOString()}] Erro ao verificar status do pagamento:`, error.message);
-        res.status(500).json({ status: 'rejected' });
+        res.status(500).json({ status: 'rejected', error: error.message });
     }
 });
 
