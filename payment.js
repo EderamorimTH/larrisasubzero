@@ -1,14 +1,18 @@
-const mp = new MercadoPago(process.env.MERCADO_PAGO_PUBLIC_KEY || 'SUA_CHAVE_PUBLICA_AQUI', { locale: 'pt-BR' });
+const mp = new MercadoPago('TEST-INSIRA_SUA_CHAVE_PUBLICA_AQUI', { locale: 'pt-BR' });
 let selectedNumbers = [];
 let userId = Math.random().toString(36).substring(2, 15);
 
 async function loadNumbers() {
+    console.log('Iniciando loadNumbers...');
     document.getElementById('loading-message').style.display = 'block';
     document.getElementById('numbers-grid').style.display = 'none';
     try {
+        console.log('Fazendo fetch para https://larrisasubzero.onrender.com/available_numbers');
         const response = await fetch('https://larrisasubzero.onrender.com/available_numbers');
-        if (!response.ok) throw new Error('Erro ao carregar números');
+        console.log('Resposta recebida:', response);
+        if (!response.ok) throw new Error(`Erro ao carregar números: ${response.status} ${response.statusText}`);
         const numbers = await response.json();
+        console.log('Números recebidos:', numbers.slice(0, 5));
         const grid = document.getElementById('numbers-grid');
         grid.innerHTML = '';
         numbers.forEach(num => {
@@ -25,7 +29,7 @@ async function loadNumbers() {
     } catch (error) {
         console.error('Erro ao carregar números:', error);
         document.getElementById('number-error').style.display = 'block';
-        document.getElementById('error-details').textContent = 'Erro ao carregar números. Tente novamente ou entre em contato via Instagram.';
+        document.getElementById('error-details').textContent = `Erro ao carregar números: ${error.message}. Tente novamente ou entre em contato via Instagram.`;
         document.getElementById('loading-message').style.display = 'none';
     }
 }
@@ -55,12 +59,14 @@ async function verifyPassword() {
     const passwordError = document.getElementById('password-error');
     const passwordOverlay = document.getElementById('password-overlay');
     try {
+        console.log('Verificando senha...');
         const response = await fetch('https://larrisasubzero.onrender.com/verify_password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ password: passwordInput })
         });
         const result = await response.json();
+        console.log('Resultado da verificação de senha:', result);
         if (result.success) {
             passwordOverlay.style.display = 'none';
             window.location.href = '/sorteio.html';
@@ -79,12 +85,14 @@ async function verifyPassword() {
 async function reserveNumbers() {
     if (selectedNumbers.length === 0) return;
     try {
+        console.log('Reservando números:', selectedNumbers);
         const response = await fetch('https://larrisasubzero.onrender.com/reserve_numbers', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId, numbers: selectedNumbers })
         });
-        if (!response.ok) throw new Error('Erro ao reservar números');
+        if (!response.ok) throw new Error(`Erro ao reservar números: ${response.status} ${response.statusText}`);
+        console.log('Números reservados com sucesso');
     } catch (error) {
         console.error('Erro ao reservar números:', error);
         document.getElementById('error-message').style.display = 'block';
@@ -93,6 +101,7 @@ async function reserveNumbers() {
 
 async function renderCardForm() {
     document.getElementById('card-payment-form').innerHTML = '';
+    console.log('Renderizando formulário de cartão...');
     const cardForm = mp.cardForm({
         amount: (selectedNumbers.length * 5).toString(),
         autoMount: true,
@@ -113,6 +122,7 @@ async function renderCardForm() {
             onSubmit: async event => {
                 event.preventDefault();
                 try {
+                    console.log('Processando pagamento com cartão...');
                     const { paymentMethodId, issuerId, token } = await mp.cardForm.createCardToken();
                     await processCardPayment(token, paymentMethodId, issuerId);
                 } catch (error) {
@@ -141,13 +151,15 @@ async function processCardPayment(token, paymentMethodId, issuerId) {
             issuer_id: issuerId,
             installments: parseInt(document.getElementById('installments').value) || 1
         };
+        console.log('Enviando pagamento:', { userId, numbers: selectedNumbers, buyerName, buyerPhone });
         const response = await fetch('https://larrisasubzero.onrender.com/process_payment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId, numbers: selectedNumbers, buyerName, buyerPhone, paymentData })
         });
-        if (!response.ok) throw new Error('Erro ao processar pagamento');
+        if (!response.ok) throw new Error(`Erro ao processar pagamento: ${response.status} ${response.statusText}`);
         const result = await response.json();
+        console.log('Resultado do pagamento:', result);
         if (result.status === 'approved') {
             document.getElementById('success-message').style.display = 'block';
             selectedNumbers = [];
@@ -191,13 +203,15 @@ document.getElementById('pay-pix').addEventListener('click', async () => {
     const buyerName = document.getElementById('buyer-name').value;
     const buyerPhone = document.getElementById('buyer-phone').value;
     try {
+        console.log('Processando pagamento Pix...');
         const response = await fetch('https://larrisasubzero.onrender.com/process_pix_payment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId, numbers: selectedNumbers, buyerName, buyerPhone, transaction_amount })
         });
-        if (!response.ok) throw new Error('Erro ao gerar Pix');
+        if (!response.ok) throw new Error(`Erro ao gerar Pix: ${response.status} ${response.statusText}`);
         const result = await response.json();
+        console.log('Resultado Pix:', result);
         if (result.qr_code) {
             document.getElementById('pix-qr-code').src = `data:image/png;base64,${result.qr_code_base64}`;
             document.getElementById('pix-code').textContent = result.qr_code;
@@ -216,9 +230,11 @@ document.getElementById('pay-pix').addEventListener('click', async () => {
 async function checkPixPaymentStatus(paymentId) {
     const interval = setInterval(async () => {
         try {
+            console.log('Verificando status do Pix:', paymentId);
             const response = await fetch(`https://larrisasubzero.onrender.com/payment_status/${paymentId}`);
-            if (!response.ok) throw new Error('Erro ao verificar status do pagamento');
+            if (!response.ok) throw new Error(`Erro ao verificar status do pagamento: ${response.status} ${response.statusText}`);
             const result = await response.json();
+            console.log('Status do Pix:', result);
             if (result.status === 'approved') {
                 clearInterval(interval);
                 document.getElementById('success-message').style.display = 'block';
