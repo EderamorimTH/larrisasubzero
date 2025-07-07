@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sorteio Sub-zero Beer</title>
+    <script src="https://sdk.mercadopago.com/js/v2"></script>
+    <style>
+        #card-form input, #card-form select {
+            margin: 10px 0;
+            padding: 8px;
+            width: 100%;
+            max-width: 300px;
+        }
+        #card-form button, #pay-card, #pay-pix {
+            background-color: #007bff;
+            color: white;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+            margin: 5px;
+        }
+        #card-form button:hover, #pay-card:hover, #pay-pix:hover {
+            background-color: #0056b3;
+        }
+        #number-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 5px;
+        }
+        .number {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #ccc;
+        }
+        .available { background-color: #28a745; }
+        .reserved { background-color: #ffc107; }
+        .sold { background-color: #dc3545; }
+        #pix-details img { max-width: 200px; }
+    </style>
+</head>
+<body>
+    <div>
+        <h1>PARTICIPE DO NOSSO SORTEIO E CONCORRA A UMA CAIXA DE CERVEJA LITRÃO A SUA ESCOLHA E UMA PORÇÃO DE FRANGO A PASSARINHO VALOR DE 5 REAIS CADA NÚMERO!</h1>
+        <nav>
+            <a href="index (5).html">INÍCIO</a>
+            <a href="ganhadores (1).html">GANHADORES</a>
+        </nav>
+    </div>
+
+    <div id="password-overlay">
+        <h2>Digite a Senha</h2>
+        <input type="password" id="password-input">
+        <button id="password-submit">Entrar</button>
+        <p id="password-error" style="display: none;">Senha incorreta. Tente novamente.</p>
+    </div>
+
+    <div id="number-error" style="display: none;">ERRO AO CARREGAR NÚMEROS. Tente novamente mais tarde ou entre em contato via Instagram.</div>
+    <div id="loading-message">Aguarde um momento, os números estão sendo carregados...</div>
+    <div id="number-grid"></div>
+
+    <div id="payment-success" style="display: none;">PAGAMENTO APROVADO COM SUCESSO! Seus números estão confirmados. Boa sorte!</div>
+    <div id="payment-failed" style="display: none;">O PAGAMENTO NÃO FOI CONCLUÍDO. Seus números foram liberados. Escolha outra vez para tentar novamente.</div>
+    <div id="payment-pending" style="display: none;">SEU PAGAMENTO ESTÁ PENDENTE. Aguarde a confirmação ou tente novamente se os números expirarem.</div>
+
+    <div id="payment-section" style="display: none;">
+        <h2>FINALIZE SUA COMPRA</h2>
+        <p>Preencha os dados abaixo e escolha o método de pagamento. Cada número custa R$ 5,00.</p>
+        <p id="selected-numbers">Números selecionados: Nenhum</p>
+        <p id="total-amount">Total: R$ 0.00</p>
+        <input type="text" id="buyer-name" placeholder="Nome completo">
+        <input type="text" id="buyer-phone" placeholder="CPF">
+        <button id="pay-card">Pagar com Cartão</button>
+        <button id="pay-pix">Pagar com Pix</button>
+        <div id="card-form" style="display: none;"></div>
+        <div id="pix-details" style="display: none;">
+            <img id="pix-qr" src="" alt="QR Code Pix">
+            <p id="pix-code"></p>
+        </div>
+        <p>Atenção: Você tem 5 minutos para realizar o pagamento, ou os números selecionados serão liberados.</p>
+    </div>
+
+    <footer>
+        <p>Contato: <a href="https://instagram.com/SUBZEROBEERCBA">@SUBZEROBEERCBA</a></p>
+        <a href="https://wa.me/5581999999999">COMPARTILHAR NO WHATSAPP</a>
+        <p>© 2025 SUB-ZERO BEER</p>
+    </footer>
+
+    <script src="payment.js"></script>
+</body>
+</html>
